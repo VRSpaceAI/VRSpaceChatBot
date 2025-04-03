@@ -113,14 +113,10 @@
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    // Endpoints:
-    // 1. n8n webhook endpoint that acknowledges receipt
+    // n8n webhook endpoint that processes messages and returns a reply
     const API_ENDPOINT = 'https://vrspace.app.n8n.cloud/webhook-test/568f8d5b-05f3-4365-91e3-5cebc79d0f41';
-    // 2. Your website’s endpoint that returns the processed reply.
-    //    This endpoint should be implemented on your backend (e.g., Node.js, PHP, etc.)
-    const POLLING_ENDPOINT = 'https://your-website.com/api/getReply';
 
-    // Function to send the message to n8n webhook
+    // Function to send the user's message to n8n and get the reply directly
     async function sendMessage(message) {
       try {
         const response = await fetch(API_ENDPOINT, {
@@ -128,27 +124,12 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userMessage: message })
         });
-        // Expect an acknowledgement (optionally with a conversation ID)
+        // Parse the JSON response from n8n
         const data = await response.json();
         return data;
       } catch (error) {
         console.error('Error sending message:', error);
-        return { error: 'Error sending message' };
-      }
-    }
-
-    // Function to poll for the reply from your website’s backend
-    async function pollForReply() {
-      try {
-        const response = await fetch(POLLING_ENDPOINT, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        const data = await response.json();
-        return data;
-      } catch (error) {
-        console.error('Error polling for reply:', error);
-        return null;
+        return { reply: 'Sorry, something went wrong!' };
       }
     }
 
@@ -159,19 +140,9 @@
       addMessage('You: ' + message, 'user');
       chatInput.value = '';
 
-      // Send the user message to n8n webhook
-      const ack = await sendMessage(message);
-      // Optionally, extract a conversation ID from ack if your system supports it
-      // const conversationId = ack.conversationId;
-
-      // Start polling for the reply every 3 seconds
-      const pollInterval = setInterval(async () => {
-        const result = await pollForReply();
-        if (result && result.reply) {
-          addMessage('Bot: ' + result.reply, 'bot');
-          clearInterval(pollInterval);
-        }
-      }, 3000);
+      // Send the message to n8n and immediately await the reply
+      const result = await sendMessage(message);
+      addMessage('Bot: ' + (result.reply || 'No response received'), 'bot');
     });
 
     // Allow sending messages by pressing the Enter key
